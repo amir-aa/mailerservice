@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from services.email_service import EmailService
 from utils.validators import validate_smtp_config
-
+from models import SmtpConfig
 smtp_bp = Blueprint('smtp', __name__)
 
 class SmtpController:
@@ -56,7 +56,9 @@ class SmtpController:
     def update_smtp_config(self, config_id):
         """Update an SMTP configuration"""
         data = request.json
-        
+        configentity=SmtpConfig.get_or_none(SmtpConfig.id==config_id)
+        if not configentity or len(dict(data).items())<1:
+            return jsonify({"status":"failed","message":"Config does not exists!"}),400
         try:
             success = self.email_service.update_smtp_config(config_id, **data)
             
