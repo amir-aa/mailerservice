@@ -1,0 +1,16 @@
+services:
+  web:
+    build: .
+    user: "1006:1006"  # Run as non-root (UID/GID from host)
+    ports:
+      - "127.0.0.1:5004:5004"
+    environment:
+      - FLASK_ENV=production
+    volumes:
+      - ./app:/app:ro  # Mount app code as read-only
+
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 512M

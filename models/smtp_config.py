@@ -71,3 +71,4 @@ def initialize_db():
     db.connect()
     db.create_tables([EmailMessage, SmtpConfig], safe=True)
     db.close()
+initialize_db()

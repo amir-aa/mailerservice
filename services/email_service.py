@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 import threading
 import logging
-from peewee import DoesNotExist, fn
+from peewee import DoesNotExist, fn,FloatField,Case,SQL
 
 from models.email_model import EmailMessage, db
 from models.smtp_config import SmtpConfig
@@ -222,28 +222,40 @@ class EmailService:
             } for email in emails]
     
     def _get_best_smtp_config(self, exclude_id=None) -> Optional[SmtpConfig]:
-        """Get the best available SMTP configuration"""
+        """Get the best available SMTP configuration, with sorting done in Python."""        
         query = (
             SmtpConfig
             .select()
             .where(
-                (SmtpConfig.active == True) & 
+                (SmtpConfig.active == True) &
                 (SmtpConfig.sent_count_today < SmtpConfig.daily_limit) &
                 (SmtpConfig.sent_count_hour < SmtpConfig.hourly_limit)
             )
         )
-        
+
         if exclude_id is not None:
             query = query.where(SmtpConfig.id != exclude_id)
-        
-        # Order by utilization (lowest first)
-        query = query.order_by(
-            fn.CAST(SmtpConfig.sent_count_today, 'FLOAT') / fn.CAST(SmtpConfig.daily_limit, 'FLOAT')
-        )
-        
-        try:
-            return query.get()
-        except DoesNotExist:
+
+        try:            # Fetch all potential candidates
+            candidate_configs = list(query) # Execute the query and get a list            
+            if not candidate_configs:
+                return None
+
+            # Now, sort these candidates in Python
+            def calculate_utilization(config: SmtpConfig) -> float:
+                if config.daily_limit is not None and config.daily_limit != 0:
+                    # Ensure float division
+                    return float(config.sent_count_today) / float(config.daily_limit)
+                return 0.0 # If daily_limit is 0 or None, consider utilization as 0 (or a high number if you want to deprioritize them)
+
+            # Sort by utilization (lowest first)
+            # We also add a secondary sort key (e.g., id) to ensure stable sort if utilizations are equal
+            sorted_configs = sorted(candidate_configs, key=lambda cfg: (calculate_utilization(cfg), cfg.id))
+
+            return sorted_configs[0] # Return the one with the lowest utilization
+
+        except Exception as e: # Broader exception handling for unforeseen issues during fetch or sort
+            logger.error(f"Error in _get_best_smtp_config: {e}")
             return None
     
     def create_smtp_config(self, **kwargs) -> int:

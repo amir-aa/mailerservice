@@ -1,0 +1,8 @@
+Flask==2.3.2
+Peewee==3.17.0
+Flask-OAuthlib==0.9.6
+requests==2.31.0
+python-dotenv==1.0.0
+gunicorn
+Flask-Cors==3.0.10
+pymysql

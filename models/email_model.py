@@ -1,9 +1,10 @@
 from peewee import *
 from datetime import datetime
-import json
+import json,os
 
-# Database instance
-db = SqliteDatabase('emails.db')
+
+db = MySQLDatabase(os.getenv('DB_NAME'), user='mailon', password=os.getenv('DB_PASSWORD', ''),
+                   host=os.getenv('DB_HOST'), port=int(os.getenv('DB_PORT',3306)), charset='utf8mb4', autocommit=True)
 
 class BaseModel(Model):
     class Meta:
