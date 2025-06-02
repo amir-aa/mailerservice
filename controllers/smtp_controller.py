@@ -2,8 +2,19 @@ from flask import Blueprint, request, jsonify
 from services.email_service import EmailService
 from utils.validators import validate_smtp_config
 from models import SmtpConfig
+from functools import wraps
+import os
 smtp_bp = Blueprint('smtp', __name__)
+API_KEY = os.getenv('APIKEY')
 
+def require_api_key(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        key = request.headers.get('X-API-KEY')
+        if key != API_KEY:
+            return jsonify({'error': 'Unauthorized'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
 class SmtpController:
     """Controller for SMTP configuration endpoints"""
     
@@ -12,10 +23,10 @@ class SmtpController:
     
     def register_routes(self, blueprint: Blueprint):
         """Register routes to blueprint"""
-        blueprint.route('/smtp-configs', methods=['POST'])(self.create_smtp_config)
-        blueprint.route('/smtp-configs', methods=['GET'])(self.list_smtp_configs)
-        blueprint.route('/smtp-configs/<int:config_id>', methods=['GET'])(self.get_smtp_config)
-        blueprint.route('/smtp-configs/<int:config_id>', methods=['PUT'])(self.update_smtp_config)
+        blueprint.route('/smtp-configs', methods=['POST'])(require_api_key(self.create_smtp_config))
+        blueprint.route('/smtp-configs', methods=['GET'])(require_api_key(self.list_smtp_configs))
+        blueprint.route('/smtp-configs/<int:config_id>', methods=['GET'])(require_api_key(self.get_smtp_config))
+        blueprint.route('/smtp-configs/<int:config_id>', methods=['PUT'])(require_api_key(self.update_smtp_config))
     
     def create_smtp_config(self):
         """Create a new SMTP configuration"""
