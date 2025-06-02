@@ -1,9 +1,19 @@
 from flask import Blueprint, request, jsonify
 from services.email_service import EmailService
 from utils.validators import validate_email_input
-
+from functools import wraps
+import os
 email_bp = Blueprint('email', __name__)
+API_KEY = os.getenv('APIKEY')
 
+def require_api_key(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        key = request.headers.get('X-API-KEY')
+        if key != API_KEY:
+            return jsonify({'error': 'Unauthorized'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
 class EmailController:
     """Controller for email endpoints"""
     
@@ -12,9 +22,9 @@ class EmailController:
     
     def register_routes(self, blueprint: Blueprint):
         """Register routes to blueprint"""
-        blueprint.route('/emails', methods=['POST'])(self.create_email)
-        blueprint.route('/emails/<int:email_id>', methods=['GET'])(self.get_email)
-        blueprint.route('/emails/status/<status>', methods=['GET'])(self.get_emails_by_status)
+        blueprint.route('/emails', methods=['POST'])(require_api_key(self.create_email))
+        blueprint.route('/emails/<int:email_id>', methods=['GET'])(require_api_key(self.get_email))
+        blueprint.route('/emails/status/<status>', methods=['GET'])(require_api_key(self.get_emails_by_status))
     
     def create_email(self):
         """Create a new email"""
